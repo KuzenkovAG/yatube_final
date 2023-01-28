@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Технологии{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="row">
+    <div class="container" id="tech-header">
+      <h1>Технология сайта</h1>
+    </div>
+    <aside class="col-12 col-md-3" id="tech-aside">
+      <div id="tech-list">
+        <ul class="list-group list-group-flush">
+          <div id="list-example" class="list-group">
+            <a class="list-group-item list-group-item-action" href="#list-item-1">
+              Python
+            </a>
+            <a class="list-group-item list-group-item-action" href="#list-item-2">
+              Django
+            </a>
+            <a class="list-group-item list-group-item-action" href="#list-item-3">
+              Bootstrap
+            </a>
+          </div>
+        </ul>
+      </div>
+    </aside>
+
+    <article class="col-12 col-md-9">
+      <div data-bs-spy="scroll" data-bs-target="#list-example" data-bs-offset="0" class="scrollspy-example">
+        <h4 id="list-item-1">Python 3.9</h4>
+        <p>
+          Документация - <a href="https://docs.python.org/3.9/" target="_blank">eng</a><br>
+          Код оформлен в стиле <a href="https://peps.python.org/pep-0008/" target="_blank">PEP8</a><br>
+          Backend сайта создан с помощью фреймворка Django, написанный на языке Python
+          <br><br><br>
+        </p>
+        <h4 id="list-item-2">Django 2.2.6</h4>
+        <p>
+          Документация - <a href="https://docs.djangoproject.com/en/2.2/" target="_blank">eng</a><br>
+        </p>
+        <h5>Приложения</h5>
+        Функционал сайта разбит на приложения:
+        <ul>
+          <li>posts (отвечает за отображение, создание, изменение постов)</li>
+          <li>users (авторизация и регистрация пользователей)</li>
+          <li>about (отображение информационных страниц)</li>
+          <li>core (храниллище контекст процессоров, пользовательских фильтров)</li>
+        </ul>
+        <h5>Приложение posts</h5>
+        <p>
+          <b>Публикация поста</b><br>
+          Посты могут публиковать только авторизованные пользователи. Проверка
+          авторизации осуществляется с помощью встроенного декоратора
+          <i>@login_required</i>. <br>
+          <b>Изменение поста</b><br>
+          Пост может изменить только пользователь, создавший пост. Проверка
+          осуществляется с помощью созданного декоратора <i>@owner_only</i>. <br>
+        </p>
+        <h6>URL:</h6>
+        <code>
+          <pre>
+/                     - главная страница
+group/group_slug/     - страница группы постов
+profile/username/     - страница пользователя
+posts/post_id/        - страница поста
+create/               - страница для создания поста
+posts/post_id>/edit/  - страница для изменения поста
+          </pre>
+        </code>
+        <h6>Модели:</h6>
+        <code>
+          <pre>
+Group - поля: id, название, slug, описание
+Post  - поля: id, текст, дата публикации, группа (внешний ключ Group), автор(внешний ключ от User)
+          </pre>
+        </code>
+        <h6>Формы:</h6>
+        <code>
+          <pre>
+PostForm - форма для создания/редактирования поста
+          </pre>
+        </code>
+
+        <h5>Приложение Users</h5>
+        <p class="low-margin">
+          Приложение позволяет осуществлять:
+        <ul>
+        <li>Вход пользователя</li>
+        <li>Выход пользователя</li>
+        <li>Регистрацию пользователя</li>
+        <li>Смену пароля (для авторизоанных пользователей)</li>
+        <li>Сброс пароля через почту (для неавторизованных пользователей)</li>
+      </ul>
+        </p>
+        <p>
+          Приложение использует встроенные View-классы приложения django.contrib.auth.
+          Использование которых сократило время на разработку сайта.  Были переопределены только используемые <шаблоны> </шаблоны>
+        </p>
+        <h5>Приложение About</h5>
+        <p>
+          Приложение используется для отображения статических информационных страниц
+        </p>
+        <h6>URL:</h6>
+        <code>
+          <pre>
+about/author/         - страница об авторе
+about/tech/           - страница о технологии сайта
+          </pre>
+        </code>
+
+        <h5>Приложение Core</h5>
+        <p>
+          Вспомогательное приложение для хранения пользовательских context
+          processors, filter
+        </p>
+
+        <h4>Шаблоны</h4>
+        <p>
+          Встроенный шаблонизатор позволяет генерировать страницу на основании
+          имеющихся шаблонов
+        </p>
+        Шаблоны страниц располагаются в папке template
+        <code>
+          <pre>
+template
+├── about       - шаблоны приложения about
+├── includes    - общие шаблоны отображения поста, формы, паджинатора, заголовка и подвала страницы
+├── posts       - шаблоны приложения posts
+├── users       - шаблоны приложения users
+└── base.html   - основа страницы
+          </pre>
+        </code>
+        <h4 id="list-item-3">Bootstrap 5</h4>
+        <p>
+          Bootstrap - framework для создания разметки сайта <br>
+          Документация - <a href="https://getbootstrap.com/docs/5.0/getting-started/introduction/" target="_blank">eng</a><br>
+        </p>
+        Статические файлы для создания дизайна сайта (css файлы, image, java scripts) собраны в папке stitic
+        <code>
+          <pre>
+static
+├── css
+├── img
+└── js
+          </pre>
+        </code>
+        <h5>Использованные компоненты</h5>
+        <ul>
+          <li>
+            Навигационная панель -
+            <a href="https://getbootstrap.com/docs/5.0/components/navbar/#image-and-text" target="_blank">eng</a>
+          </li>
+          <li>
+            Адаптивная навигационная панель (для просмотра с мобильных телефонов) -
+            <a href="https://getbootstrap.com/docs/5.0/components/navbar/#external-content" target="_blank">eng</a>
+          </li>
+          <li>
+            Списки -
+            <a href="https://getbootstrap.com/docs/5.0/components/card/#list-groups" target="_blank">eng</a>
+          </li>
+          <li>
+            Карточки -
+            <a href="https://getbootstrap.com/docs/5.0/components/card/#images" target="_blank">eng</a>
+          </li>
+          <li>
+            Пагинатор -
+            <a href="https://getbootstrap.com/docs/5.0/components/pagination/#overview" target="_blank">eng</a>
+          </li>
+          <li>
+            Кнопки -
+            <a href="https://getbootstrap.com/docs/5.0/components/buttons/#examples" target="_blank">eng</a>
+          </li>
+          <li>
+            Формы -
+            <a href="https://getbootstrap.com/docs/5.0/forms/overview/#overview" target="_blank">eng</a>
+          </li>
+        </ul>
+      </div>
+    </article>
+  </div>
+</div>
+
+{% endblock %}

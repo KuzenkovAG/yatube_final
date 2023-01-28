@@ -1,0 +1,32 @@
+
+{% with request.resolver_match.view_name as view_name %}
+
+{% if view_name == 'posts:post_edit' %}
+Добавить
+{% endif %}
+
+{% if view_name == 'posts:post_create' %}
+Сохранить
+{% endif %}
+
+{% if view_name == 'users:login' %}
+Войти
+{% endif %}
+
+{% if view_name == 'users:password_change' %}
+Сменить пароль
+{% endif %}
+
+{% if view_name == 'users:password_reset_confirm' %}
+Изменить
+{% endif %}
+
+{% if view_name == 'users:password_reset' %}
+Отправить
+{% endif %}
+
+{% if view_name == 'users:signup' %}
+Зарегистрироваться
+{% endif %}
+
+{% endwith %}

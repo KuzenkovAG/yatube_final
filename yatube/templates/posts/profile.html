@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+Профайл пользователя {{ user.username }}
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  {% if author.get_full_name %}
+  <h1>Все посты пользователя {{ author.get_full_name }} </h1>
+  {% else %}
+  <h1>Все посты пользователя {{ author }} </h1>
+  {% endif %}
+  <h3>Всего постов: {{ post_count }} </h3>
+  <article>
+    {% include 'includes/print_post.html' %}
+  </article>
+  {% include 'includes/paginator.html' %}
+</div>
+{% endblock %}
