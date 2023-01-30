@@ -45,11 +45,23 @@ class StaticURLTests(TestCase):
                 f'/posts/{StaticURLTests.post.id}/edit/',
                 'posts/create_post.html'
             ),
+            (
+                '/follow/',
+                'posts/follow.html'
+            )
         )
         cls.urls_redirect = (
             ('/create/', '/auth/login/'),
             (f'/posts/{StaticURLTests.post.id}/edit/', '/auth/login/'),
             (f'/posts/{StaticURLTests.post.id}/comment/', '/auth/login/'),
+            (
+                f'/profile/{StaticURLTests.user.username}/follow/',
+                '/auth/login/'
+            ),
+            (
+                f'/profile/{StaticURLTests.user.username}/unfollow/',
+                '/auth/login/'
+            ),
         )
 
     def setUp(self):

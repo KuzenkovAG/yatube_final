@@ -1,5 +1,4 @@
 {% load thumbnail %}
-{% for post in page_obj %}
 <ul>
   {% if request.resolver_match.view_name != 'posts:profile' %}
   <li>
@@ -28,4 +27,3 @@
 {% endif %}
 {% endif %}
 {% if not forloop.last %}<hr>{% endif %}
-{% endfor %}

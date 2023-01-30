@@ -1,13 +1,12 @@
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 
 from .forms import CommentForm, PostForm
-from .models import Group, Post
-from .utils import create_paginator
+from .models import Follow, Group, Post
+from .utils import create_paginator, get_author_object
 
 POST_LIMIT = settings.POST_LIMIT_ON_PAGE
 
@@ -50,17 +49,24 @@ def group_post(request, slug):
 
 def profile(request, username):
     """Page of user profile."""
-    User = get_user_model()
-
-    author = get_object_or_404(User, username=username)
+    author = get_author_object(username)
     posts = author.posts.all()
     post_count = posts.count()
     page_obj = create_paginator(request, posts, POST_LIMIT)
+    following = False
+    if request.user.is_authenticated:
+        follows = Follow.objects.filter(
+            user=request.user,
+            author=author,
+        )
+        if follows:
+            following = True
 
     context = {
         'page_obj': page_obj,
         'post_count': post_count,
         'author': author,
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
@@ -119,7 +125,6 @@ def post_create(request):
 def post_edit(request, post_id):
     """Page of edit post."""
     title = 'Редактировать пост'
-
     post = get_object_or_404(Post, id=post_id)
     form = PostForm(
         request.POST or None,
@@ -142,19 +147,40 @@ def post_edit(request, post_id):
 @login_required
 def follow_index(request):
     """Page show posts of the authors that the user is following."""
-    context = {
-
-    }
-    return render(request, 'posts/profile.html', context)
+    user = request.user
+    follows = Follow.objects.select_related('user', 'author').filter(user=user)
+    posts_list = Post.objects.select_related('author', 'group').filter(
+        author__in=[follow.author for follow in follows]
+    )
+    page_obj = create_paginator(request, posts_list, POST_LIMIT)
+    return render(request, 'posts/follow.html', {'page_obj': page_obj})
 
 
 @login_required
 def profile_follow(request, username):
-    """Follow username."""
-    return redirect(reverse_lazy('posts:profile_detail', args=[username]))
+    """
+    Follow to username.
+    User can't follow yourself.
+    If user already follow, don't create new one.
+    """
+    author = get_author_object(username)
+    follows = Follow.objects.select_related('user', 'author').filter(
+        user=request.user,
+        author=author
+    )
+    if author != request.user and not follows:
+        Follow.objects.create(user=request.user, author=author)
+    return redirect(reverse('posts:profile', args=[username]))
 
 
 @login_required
 def profile_unfollow(request, username):
-    """Unfollow username"""
-    return redirect(reverse_lazy('posts:profile_detail', args=[username]))
+    """Unfollow from username."""
+    author = get_author_object(username)
+    follows = Follow.objects.select_related('user', 'author').filter(
+        user=request.user,
+        author=author
+    )
+    if follows:
+        follows.delete()
+    return redirect(reverse('posts:profile', args=[username]))

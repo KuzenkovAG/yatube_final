@@ -3,11 +3,10 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
-from django.core.cache.utils import make_template_fragment_key
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from posts.forms import CommentForm, PostForm
-from posts.models import Comment, Group, Post
+from posts.models import Comment, Follow, Group, Post
 import shutil
 import tempfile
 
@@ -26,6 +25,11 @@ class TestViews(TestCase):
             description='Описание тестовой группы'
         )
         cls.user = User.objects.create_user(username='test_user')
+        cls.follower = User.objects.create_user(username='follow_user')
+        Follow.objects.create(
+            author=TestViews.user,
+            user=TestViews.follower
+        )
         image_png = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -75,6 +79,10 @@ class TestViews(TestCase):
                 reverse('posts:post_edit', args=[TestViews.post.id]),
                 'posts/create_post.html'
             ),
+            (
+                reverse('posts:follow_index'),
+                'posts/follow.html'
+            )
         )
         cls.url_paginator = (
             reverse('posts:index'),
@@ -109,6 +117,17 @@ class TestViews(TestCase):
                 self.assertEqual(first_object.group, TestViews.post.group)
                 self.assertEqual(first_object.text, TestViews.post.text)
                 self.assertEqual(first_object.image, TestViews.post.image)
+
+    def test_follow_page_context(self):
+        """Check context of Follow index page."""
+        self.follower_client = Client()
+        self.follower_client.force_login(TestViews.follower)
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        first_object = response.context.get('page_obj')[0]
+        self.assertEqual(first_object.author, TestViews.post.author)
+        self.assertEqual(first_object.group, TestViews.post.group)
+        self.assertEqual(first_object.text, TestViews.post.text)
+        self.assertEqual(first_object.image, TestViews.post.image)
 
     def test_post_detail_page_correct_context(self):
         """
@@ -149,7 +168,7 @@ class TestViews(TestCase):
         self.assertEqual(response.context.get('title'), 'Редактировать пост')
 
 
-class PaginatorViewsTest(TestCase):
+class PaginatorTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -159,26 +178,32 @@ class PaginatorViewsTest(TestCase):
             description='Описание тестовой группы'
         )
         cls.user = User.objects.create_user(username='test_user')
+        cls.follower = User.objects.create_user(username='follower')
+        Follow.objects.create(
+            author=PaginatorTest.user,
+            user=PaginatorTest.follower,
+        )
         for i in range(1, 14):
             Post.objects.create(
-                group=PaginatorViewsTest.group,
-                author=PaginatorViewsTest.user,
+                group=PaginatorTest.group,
+                author=PaginatorTest.user,
                 text=f'Текст {i}-го поста'
             )
         cls.urls_paginator = (
             reverse('posts:index'),
-            reverse('posts:group_list', args=[PaginatorViewsTest.group.slug]),
-            reverse('posts:profile', args=[PaginatorViewsTest.user.username]),
+            reverse('posts:group_list', args=[PaginatorTest.group.slug]),
+            reverse('posts:profile', args=[PaginatorTest.user.username]),
+            reverse('posts:follow_index')
         )
 
     def setUp(self):
         self.authorized_client = Client()
-        self.authorized_client.force_login(PaginatorViewsTest.user)
+        self.authorized_client.force_login(PaginatorTest.follower)
         cache.clear()
 
     def test_paginator(self):
         """Inspection of quantity of post on 1st and 2nd page of paginator."""
-        for url in PaginatorViewsTest.urls_paginator:
+        for url in PaginatorTest.urls_paginator:
             with self.subTest(url=url):
                 self.max_post_on_page = settings.POST_LIMIT_ON_PAGE
                 self.check_objects_on_first_page(url)
@@ -302,3 +327,58 @@ class TestCachePages(TestCase):
             content_after_clear_cache,
             'Cache of Index page not work correctly'
         )
+
+
+class TestFollow(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.follower = User.objects.create_user(username='follower')
+        cls.not_follower = User.objects.create_user(username='not_follower')
+        cls.author = User.objects.create_user(username='author')
+        Follow.objects.create(
+            user=TestFollow.follower,
+            author=TestFollow.author,
+        )
+
+    def setUp(self):
+        self.follower_client = Client()
+        self.follower_client.force_login(TestFollow.follower)
+        self.unfollower_client = Client()
+        self.unfollower_client.force_login(TestFollow.not_follower)
+
+    def test_remove_following_add_following(self):
+        """Check correctly working Follow and Unfollow."""
+        initial_follows_count = Follow.objects.count()
+        self.follower_client.get(reverse(
+            'posts:profile_unfollow',
+            args=[TestFollow.author]
+        ))
+        self.assertEqual(
+            Follow.objects.count(),
+            initial_follows_count - 1,
+            'Unfollow from user not work correctly'
+        )
+        initial_follows_count = Follow.objects.count()
+        self.follower_client.get(reverse(
+            'posts:profile_follow',
+            args=[TestFollow.author]
+        ))
+        self.assertEqual(
+            Follow.objects.count(),
+            initial_follows_count + 1,
+            'Follow to user not work correctly'
+        )
+
+    def test_new_post_can_see_only_follower(self):
+        """Author post can see only Followers and can't others."""
+        post = Post.objects.create(
+            author=TestFollow.author,
+            text='This post can see only my followers'
+        )
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        page = response.context.get('page_obj')
+        self.assertIn(post, page, 'Follower not see new post')
+        response = self.unfollower_client.get(reverse('posts:follow_index'))
+        page = response.context.get('page_obj')
+        self.assertNotIn(post, page, 'User what not follow see new post')
