@@ -40,15 +40,46 @@ class TestViews(TestCase):
             content_type='image/png'
         )
         cls.post = Post.objects.create(
-            group=cls.group,
-            author=cls.user,
+            group=TestViews.group,
+            author=TestViews.user,
             text='Текст поста',
             image=uploaded,
         )
         cls.comment = Comment.objects.create(
-            author=cls.user,
-            post=cls.post,
+            author=TestViews.user,
+            post=TestViews.post,
             text='Текст тестого комментария'
+        )
+        cls.urls_template = (
+            (
+                reverse('posts:index'),
+                'posts/index.html'
+            ),
+            (
+                reverse('posts:group_list', args=[TestViews.group.slug]),
+                'posts/group_list.html'
+            ),
+            (
+                reverse('posts:profile', args=[TestViews.user.username]),
+                'posts/profile.html'
+            ),
+            (
+                reverse('posts:post_detail', args=[TestViews.post.id]),
+                'posts/post_detail.html'
+            ),
+            (
+                reverse('posts:post_create'),
+                'posts/create_post.html'
+            ),
+            (
+                reverse('posts:post_edit', args=[TestViews.post.id]),
+                'posts/create_post.html'
+            ),
+        )
+        cls.url_paginator = (
+            reverse('posts:index'),
+            reverse('posts:group_list', args=[TestViews.group.slug]),
+            reverse('posts:profile', args=[TestViews.user.username]),
         )
 
     @classmethod
@@ -58,72 +89,42 @@ class TestViews(TestCase):
 
     def setUp(self):
         self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        self.authorized_client.force_login(TestViews.user)
         cache.clear()
 
     def test_used_templates(self):
-        templates = {
-            reverse('posts:index'): 'posts/index.html',
-            reverse(
-                'posts:group_list',
-                args=[self.group.slug]
-            ): 'posts/group_list.html',
-            reverse(
-                'posts:profile',
-                args=[self.user.username]
-            ): 'posts/profile.html',
-            reverse(
-                'posts:post_detail',
-                args=[self.post.id]
-            ): 'posts/post_detail.html',
-            reverse('posts:post_create'): 'posts/create_post.html',
-            reverse(
-                'posts:post_edit',
-                args=[self.post.id]
-            ): 'posts/create_post.html',
-        }
-        for address, template in templates.items():
+        """Check used template in all URLs."""
+        for address, template in TestViews.urls_template:
             with self.subTest(view=address):
                 response = self.authorized_client.get(address)
                 self.assertTemplateUsed(response, template)
 
     def test_context_list_of_posts(self):
-        """Check post lists"""
-        url = [
-            reverse('posts:index'),
-            reverse('posts:group_list', args=[self.group.slug]),
-            reverse('posts:profile', args=[self.user.username]),
-        ]
-        for url in url:
+        """Check page_obj in URLs with paginator"""
+        for url in TestViews.url_paginator:
             with self.subTest(url=url):
                 response = self.authorized_client.get(url)
                 first_object = response.context.get('page_obj')[0]
-                self.assertEqual(first_object.author, self.post.author)
-                self.assertEqual(first_object.group, self.post.group)
-                self.assertEqual(first_object.text, self.post.text)
-                self.assertEqual(first_object.image, self.post.image)
+                self.assertEqual(first_object.author, TestViews.post.author)
+                self.assertEqual(first_object.group, TestViews.post.group)
+                self.assertEqual(first_object.text, TestViews.post.text)
+                self.assertEqual(first_object.image, TestViews.post.image)
 
     def test_post_detail_page_correct_context(self):
         """
-        Context on page of post detail.
-        Context: post, comments, post_count
+        Check context on page of post detail.
+        Context: post, comments, post_count, form.
         """
         response = self.authorized_client.get(
-            reverse('posts:post_detail', args=[self.post.id])
+            reverse('posts:post_detail', args=[TestViews.post.id])
         )
         post = response.context.get('post')
-        self.assertEqual(post.id, self.post.id)
-        self.assertEqual(post.image, self.post.image)
+        self.assertEqual(post.id, TestViews.post.id)
+        self.assertEqual(post.image, TestViews.post.image)
         post_count = response.context.get('post_count')
-        self.assertEqual(post_count, self.user.posts.count())
+        self.assertEqual(post_count, TestViews.user.posts.count())
         comment = response.context.get('comments')[0]
-        self.assertEqual(comment, self.comment)
-
-    def test_page_detail_post_from_comment(self):
-        """Inspection of comment form on post detail page."""
-        response = self.authorized_client.get(
-            reverse('posts:post_detail', args=[self.post.id])
-        )
+        self.assertEqual(comment, TestViews.comment)
         form = response.context.get('form')
         self.assertIsInstance(form, CommentForm)
         text_field = form.fields.get('text')
@@ -140,7 +141,7 @@ class TestViews(TestCase):
         """Check context of page for edit post."""
         response = self.authorized_client.get(reverse(
             'posts:post_edit',
-            args=[self.post.id]
+            args=[TestViews.post.id]
         ))
         form = response.context.get('form')
         self.assertIsInstance(form, PostForm)
@@ -160,24 +161,24 @@ class PaginatorViewsTest(TestCase):
         cls.user = User.objects.create_user(username='test_user')
         for i in range(1, 14):
             Post.objects.create(
-                group=cls.group,
-                author=cls.user,
+                group=PaginatorViewsTest.group,
+                author=PaginatorViewsTest.user,
                 text=f'Текст {i}-го поста'
             )
+        cls.urls_paginator = (
+            reverse('posts:index'),
+            reverse('posts:group_list', args=[PaginatorViewsTest.group.slug]),
+            reverse('posts:profile', args=[PaginatorViewsTest.user.username]),
+        )
 
     def setUp(self):
         self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        self.authorized_client.force_login(PaginatorViewsTest.user)
         cache.clear()
 
     def test_paginator(self):
         """Inspection of quantity of post on 1st and 2nd page of paginator."""
-        urls = [
-            reverse('posts:index'),
-            reverse('posts:group_list', args=[self.group.slug]),
-            reverse('posts:profile', args=[self.user.username]),
-        ]
-        for url in urls:
+        for url in PaginatorViewsTest.urls_paginator:
             with self.subTest(url=url):
                 self.max_post_on_page = settings.POST_LIMIT_ON_PAGE
                 self.check_objects_on_first_page(url)
@@ -217,51 +218,52 @@ class TestCreatingPost(TestCase):
         cls.user = User.objects.create_user(username='test_user')
         cls.user_another = User.objects.create_user(username='User_another')
         cls.post = Post.objects.create(
-            group=cls.group,
-            author=cls.user,
+            group=TestCreatingPost.group,
+            author=TestCreatingPost.user,
             text='Текст поста',
         )
         cls.post = Post.objects.create(
-            group=cls.group,
-            author=cls.user_another,
+            group=TestCreatingPost.group,
+            author=TestCreatingPost.user_another,
             text='Текст созданного другим пользователем',
         )
         cls.post = Post.objects.create(
-            group=cls.group_another,
-            author=cls.user_another,
+            group=TestCreatingPost.group_another,
+            author=TestCreatingPost.user_another,
             text='Текст созданного другим пользователем в другой группе',
         )
 
     def setUp(self):
         self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        self.authorized_client.force_login(TestCreatingPost.user)
         cache.clear()
 
     def test_page_group_correct_posts(self):
         """Page of group show only own group posts."""
         response = self.authorized_client.get(
-            reverse('posts:group_list', args=[self.group.slug]))
+            reverse('posts:group_list', args=[TestCreatingPost.group.slug]))
         posts = response.context.get('page_obj')
         for post in posts:
-            self.assertEqual(post.group, self.group)
+            self.assertEqual(post.group, TestCreatingPost.group)
 
     def test_page_profile_correct_posts(self):
         """Page of profile show only own user posts."""
         response = self.authorized_client.get(
-            reverse('posts:profile', args=[self.user.username])
+            reverse('posts:profile', args=[TestCreatingPost.user.username])
         )
         posts = response.context.get('page_obj')
         for post in posts:
-            self.assertEqual(post.author, self.user)
+            self.assertEqual(post.author, TestCreatingPost.user)
 
     def test_post_not_in_other_group(self):
         """Post with other group not show on group page."""
-        response = self.authorized_client.get(
-            reverse('posts:group_list', args=[self.group_another.slug])
-        )
+        response = self.authorized_client.get(reverse(
+            'posts:group_list',
+            args=[TestCreatingPost.group_another.slug]
+        ))
         posts = response.context.get('page_obj')
         for post in posts:
-            self.assertNotEqual(post.group, self.group)
+            self.assertNotEqual(post.group, TestCreatingPost.group)
 
 
 class TestCachePages(TestCase):
@@ -279,19 +281,21 @@ class TestCachePages(TestCase):
         cache.clear()
 
     def test_cache_index_page(self):
-        """Delete post and check cache of index page."""
-        response = self.guest_client.get(reverse('posts:index'))
+        """Delete post and check of index page."""
+        response = TestCachePages.guest_client.get(reverse('posts:index'))
         content_before = response.content
         self.post.delete()
-        response = self.guest_client.get(reverse('posts:index'))
+
+        response = TestCachePages.guest_client.get(reverse('posts:index'))
         content_after_remove_post = response.content
         self.assertEqual(
             content_before,
             content_after_remove_post,
             'Cache of Index page not work correctly'
         )
+
         cache.clear()
-        response = self.guest_client.get(reverse('posts:index'))
+        response = TestCachePages.guest_client.get(reverse('posts:index'))
         content_after_clear_cache = response.content
         self.assertNotEqual(
             content_before,

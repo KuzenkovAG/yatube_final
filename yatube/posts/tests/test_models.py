@@ -27,8 +27,18 @@ class PostModelTest(TestCase):
             text=cls.post_text_long,
             author=cls.user,
         )
+        cls.field_verbose_name = (
+            ('text', 'Текст поста'),
+            ('author', 'Автор'),
+            ('group', 'Группа'),
+        )
+        cls.field_help_text = (
+            ('text', 'Текст нового поста'),
+            ('group', 'Группа, к которой будет относиться пост'),
+        )
 
     def test_str_short_string(self):
+        """Check str representation of short post."""
         self.assertEqual(
             str(PostModelTest.post),
             self.post_text_short,
@@ -36,6 +46,7 @@ class PostModelTest(TestCase):
         )
 
     def test_str_long_string(self):
+        """Check str representation of long post."""
         self.assertEqual(
             str(PostModelTest.post_long),
             self.post_text_long[:settings.SHORT_TEXT_LENGTH],
@@ -43,12 +54,8 @@ class PostModelTest(TestCase):
         )
 
     def test_verbose_name(self):
-        field_verbose_name = {
-            'text': 'Текст поста',
-            'author': 'Автор',
-            'group': 'Группа',
-        }
-        for field, expected_value in field_verbose_name.items():
+        """Check verbose name."""
+        for field, expected_value in PostModelTest.field_verbose_name:
             with self.subTest(field=field):
                 response = PostModelTest.post._meta.get_field(
                     field
@@ -56,11 +63,8 @@ class PostModelTest(TestCase):
                 self.assertEqual(response, expected_value)
 
     def test_help_text(self):
-        field_help_text = {
-            'text': 'Текст нового поста',
-            'group': 'Группа, к которой будет относиться пост',
-        }
-        for field, expected_value in field_help_text.items():
+        """Check help text."""
+        for field, expected_value in PostModelTest.field_help_text:
             with self.subTest(field=field):
                 response = PostModelTest.post._meta.get_field(field).help_text
                 self.assertEqual(response, expected_value)
@@ -76,8 +80,23 @@ class GroupModelTest(TestCase):
             slug='test_slug',
             description='test_description',
         )
+        cls.field_verbose_name = (
+            ('title', 'Заголовок группы'),
+            ('slug', 'Адрес группы'),
+            ('description', 'Описание группы'),
+        )
+        cls.field_help_text = (
+            ('title', 'Краткое описание группы'),
+            (
+                'slug',
+                'Используйте только латинские символы, дефисы и знаки '
+                'подчеркивания'
+            ),
+            ('description', 'Подробно опишите группу'),
+        )
 
     def test_str(self):
+        """Check str representation."""
         self.assertEqual(
             str(GroupModelTest.group),
             self.group_title,
@@ -85,24 +104,15 @@ class GroupModelTest(TestCase):
         )
 
     def test_verbose_name(self):
-        field_verbose_name = {
-            'title': 'Заголовок группы',
-            'slug': 'Адрес группы',
-            'description': 'Описание группы',
-        }
-        for field, expected_value in field_verbose_name.items():
+        for field, expected_value in GroupModelTest.field_verbose_name:
             with self.subTest(field=field):
-                response = self.group._meta.get_field(field).verbose_name
+                response = GroupModelTest.group._meta.get_field(
+                    field).verbose_name
                 self.assertEqual(response, expected_value)
 
     def test_help_text(self):
-        field_help_text = {
-            'title': 'Краткое описание группы',
-            'slug': 'Используйте только латинские символы, дефисы и знаки '
-                    'подчеркивания',
-            'description': 'Подробно опишите группу',
-        }
-        for field, expected_value in field_help_text.items():
+        for field, expected_value in GroupModelTest.field_help_text:
             with self.subTest(field=field):
-                response = self.group._meta.get_field(field).help_text
+                response = GroupModelTest.group._meta.get_field(
+                    field).help_text
                 self.assertEqual(response, expected_value)

@@ -137,3 +137,24 @@ def post_edit(request, post_id):
         'title': title,
         'is_edit': True,
     })
+
+
+@login_required
+def follow_index(request):
+    """Page show posts of the authors that the user is following."""
+    context = {
+
+    }
+    return render(request, 'posts/profile.html', context)
+
+
+@login_required
+def profile_follow(request, username):
+    """Follow username."""
+    return redirect(reverse_lazy('posts:profile_detail', args=[username]))
+
+
+@login_required
+def profile_unfollow(request, username):
+    """Unfollow username"""
+    return redirect(reverse_lazy('posts:profile_detail', args=[username]))

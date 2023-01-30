@@ -18,7 +18,7 @@ def get_posts_count():
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
-class TestForms(TestCase):
+class PostFromTest(TestCase):
     """Checking form PostForm for create and edit posts"""
     @classmethod
     def setUpClass(cls):
@@ -38,10 +38,32 @@ class TestForms(TestCase):
             description='Group for changing during edit post',
         )
         cls.post = Post.objects.create(
-            group=cls.group,
+            group=PostFromTest.group,
             text='Post to edit',
-            author=cls.user
+            author=PostFromTest.user
         )
+        cls.image_png = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='image.png',
+            content=cls.image_png,
+            content_type='image/png'
+        )
+        cls.form_content_new_post = {
+            'group': PostFromTest.group.pk,
+            'text': 'It is test post',
+            'image': cls.uploaded,
+        }
+        cls.form_content_edited_post = {
+            'text': 'Post was edited',
+            'group': PostFromTest.another_group.pk,
+        }
 
     @classmethod
     def tearDownClass(cls):
@@ -51,33 +73,14 @@ class TestForms(TestCase):
     def test_creating_post(self):
         """Checking creating new post."""
         initial_post_count = get_posts_count()
-        image_png = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
-        uploaded = SimpleUploadedFile(
-            name='image.png',
-            content=image_png,
-            content_type='image/png'
-        )
-        form_content = {
-            'group': self.group.pk,
-            'text': 'It is test post',
-            'image': uploaded,
-        }
-
         response = self.authorized_client.post(
             reverse('posts:post_create'),
-            data=form_content,
+            data=PostFromTest.form_content_new_post,
             folow=True,
         )
         self.assertRedirects(response, reverse(
             'posts:profile',
-            args=[self.user.username]
+            args=[PostFromTest.user.username]
         ))
         self.assertEqual(
             get_posts_count(),
@@ -86,8 +89,8 @@ class TestForms(TestCase):
         )
         self.assertTrue(
             Post.objects.filter(
-                text=form_content.get('text'),
-                group=form_content.get('group'),
+                text=PostFromTest.form_content_new_post.get('text'),
+                group=PostFromTest.form_content_new_post.get('group'),
                 image='posts/image.png',
             ).exists(),
             'Post was not created correctly'
@@ -96,28 +99,24 @@ class TestForms(TestCase):
     def test_post_edit(self):
         """Checking edition existing post."""
         initial_post_count = get_posts_count()
-        form_content = {
-            'text': 'Post was edited',
-            'group': self.another_group.pk,
-        }
         response = self.authorized_client.post(
-            reverse('posts:post_edit', args=[self.post.id]),
-            data=form_content,
+            reverse('posts:post_edit', args=[PostFromTest.post.id]),
+            data=PostFromTest.form_content_edited_post,
             folow=True,
         )
         self.assertRedirects(response, reverse(
             'posts:post_detail',
-            args=[self.post.id]
+            args=[PostFromTest.post.id]
         ))
         self.assertEqual(
             get_posts_count(),
             initial_post_count,
-            'Changed amount of Posts'
+            'During editing post, was changed amount of Posts'
         )
         self.assertTrue(
             Post.objects.filter(
-                text=form_content.get('text'),
-                group=form_content.get('group'),
+                text=PostFromTest.form_content_edited_post.get('text'),
+                group=PostFromTest.form_content_edited_post.get('group'),
             ).exists(),
             'Post not edited'
         )
@@ -129,36 +128,36 @@ class CommentFormTest(TestCase):
         super().setUpClass()
         cls.user = User.objects.create_user(username='test_user')
         cls.authorized_client = Client()
-        cls.authorized_client.force_login(cls.user)
+        cls.authorized_client.force_login(CommentFormTest.user)
         cls.form = CommentForm()
         cls.post = Post.objects.create(
-            author=cls.user,
+            author=CommentFormTest.user,
             text='Its test post'
         )
+        cls.form_content = {
+            'text': 'It is test comment',
+        }
 
     def test_creating_comment(self):
         """Creating comment and check it in bd."""
-        initial_comments_count = self.post.comments.count()
-        form_content = {
-            'text': 'It is test comment',
-        }
-        response = self.authorized_client.post(
-            reverse('posts:add_comment', args=[self.post.id]),
-            data=form_content,
+        initial_comments_count = CommentFormTest.post.comments.count()
+        response = CommentFormTest.authorized_client.post(
+            reverse('posts:add_comment', args=[CommentFormTest.post.id]),
+            data=CommentFormTest.form_content,
             folow=True
         )
         self.assertRedirects(response, reverse(
             'posts:post_detail',
-            args=[self.post.id]
+            args=[CommentFormTest.post.id]
         ))
         self.assertEqual(
-            self.post.comments.count(),
+            CommentFormTest.post.comments.count(),
             initial_comments_count + 1,
             'Comment not created'
         )
         self.assertTrue(
             Comment.objects.filter(
-                text=form_content.get('text'),
+                text=CommentFormTest.form_content.get('text'),
             ).exists(),
             'Comment created not correctly'
         )
