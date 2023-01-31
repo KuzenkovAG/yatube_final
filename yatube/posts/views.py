@@ -150,12 +150,10 @@ def profile_follow(request, username):
     If user already follow, don't create new one.
     """
     author = get_user_object(username)
-    follow = Follow.objects.filter(
-        user=request.user,
-        author=author
-    )
-    if author != request.user and not follow.exists():
-        Follow.objects.create(user=request.user, author=author)
+    user = request.user
+    follow = Follow.objects.filter(user=user, author=author).exists()
+    if author != user and not follow:
+        Follow.objects.create(user=user, author=author)
     return redirect(reverse('posts:profile', args=[username]))
 
 
