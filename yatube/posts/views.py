@@ -6,7 +6,7 @@ from django.urls import reverse, reverse_lazy
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post
-from .utils import create_paginator, get_author_object
+from .utils import create_paginator, get_user_object
 
 POST_LIMIT = settings.POST_LIMIT_ON_PAGE
 
@@ -15,8 +15,7 @@ def post_owner_only(func):
     """Check post owner."""
     def check_owner(request, post_id, *args, **kwargs):
         author = request.user
-        post = author.posts.filter(id__exact=post_id)
-        if post:
+        if author.posts.filter(id=post_id).exists():
             return func(request, post_id, *args, **kwargs)
         return redirect(reverse_lazy('posts:post_detail', args=[post_id]))
     return check_owner
@@ -28,7 +27,6 @@ def index(request):
     template = 'posts/index.html'
     posts_list = Post.objects.select_related('author', 'group').all()
     page_obj = create_paginator(request, posts_list, POST_LIMIT)
-
     return render(request, template, {'page_obj': page_obj})
 
 
@@ -49,18 +47,12 @@ def group_post(request, slug):
 
 def profile(request, username):
     """Page of user profile."""
-    author = get_author_object(username)
+    author = get_user_object(username)
     posts = author.posts.all()
     post_count = posts.count()
     page_obj = create_paginator(request, posts, POST_LIMIT)
-    following = False
-    if request.user.is_authenticated:
-        follows = Follow.objects.filter(
-            user=request.user,
-            author=author,
-        )
-        if follows:
-            following = True
+    username = request.user.username
+    following = author.following.filter(user__username=username).exists()
 
     context = {
         'page_obj': page_obj,
@@ -75,8 +67,7 @@ def post_detail(request, post_id):
     """Page of post detail."""
     post = get_object_or_404(Post, id=post_id)
     form = CommentForm()
-    post_count = Post.objects.select_related('author', 'group').filter(
-        author__exact=post.author).count()
+    post_count = post.author.posts.count()
     comments = post.comments.all()
 
     context = {
@@ -92,11 +83,9 @@ def post_detail(request, post_id):
 def add_comment(request, post_id):
     form = CommentForm(request.POST or None)
     if form.is_valid():
-        user = request.user
-        post = get_object_or_404(Post, id=post_id)
         form = form.save(commit=False)
-        form.author = user
-        form.post = post
+        form.author = request.user
+        form.post_id = post_id
         form.save()
     return redirect(reverse_lazy('posts:post_detail', args=[post_id]))
 
@@ -148,10 +137,7 @@ def post_edit(request, post_id):
 def follow_index(request):
     """Page show posts of the authors that the user is following."""
     user = request.user
-    follows = Follow.objects.select_related('user', 'author').filter(user=user)
-    posts_list = Post.objects.select_related('author', 'group').filter(
-        author__in=[follow.author for follow in follows]
-    )
+    posts_list = Post.objects.filter(author__following__user=user)
     page_obj = create_paginator(request, posts_list, POST_LIMIT)
     return render(request, 'posts/follow.html', {'page_obj': page_obj})
 
@@ -163,12 +149,12 @@ def profile_follow(request, username):
     User can't follow yourself.
     If user already follow, don't create new one.
     """
-    author = get_author_object(username)
-    follows = Follow.objects.select_related('user', 'author').filter(
+    author = get_user_object(username)
+    follow = Follow.objects.filter(
         user=request.user,
         author=author
     )
-    if author != request.user and not follows:
+    if author != request.user and not follow.exists():
         Follow.objects.create(user=request.user, author=author)
     return redirect(reverse('posts:profile', args=[username]))
 
@@ -176,11 +162,6 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     """Unfollow from username."""
-    author = get_author_object(username)
-    follows = Follow.objects.select_related('user', 'author').filter(
-        user=request.user,
-        author=author
-    )
-    if follows:
-        follows.delete()
+    author = get_user_object(username)
+    Follow.objects.filter(user=request.user, author=author).delete()
     return redirect(reverse('posts:profile', args=[username]))
