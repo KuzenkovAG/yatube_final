@@ -9,8 +9,3 @@ class AboutAuthorView(TemplateView):
 class AboutTechView(TemplateView):
     """Page about site technology."""
     template_name = 'about/tech.html'
-
-
-class NoneTechView(TemplateView):
-    """Page about site technology."""
-    template_name = 'about/none.html'
